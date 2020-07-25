@@ -1,0 +1,20 @@
+version: "3.7"
+services:
+  app:
+    build:
+      context: .
+      target: dev
+    command: tail -f /dev/null
+    stdin_open: true
+    tty: true
+    ports:
+      - 4000:4000
+    volumes:
+      - ./:/opt/app:delegated
+      - deps_cache:/opt/app/deps
+      - build_cache:/opt/app/_build
+      - node_modules:/opt/app/assets/node_modules
+volumes:
+  deps_cache:
+  build_cache:
+  node_modules:

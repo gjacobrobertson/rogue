@@ -1,0 +1,12 @@
+<header>
+  <h1>Rogue</h1>
+  <nav>
+    <%= live_patch to: Routes.live_path(@socket, RogueWeb.PageLive) do %>
+    Home
+    <% end %>
+  </nav>
+
+</header>
+<main>
+  <%= @inner_content %>
+</main>
