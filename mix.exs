@@ -10,7 +10,8 @@ defmodule Rogue.MixProject do
       compilers: [:phoenix] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      releases: releases()
     ]
   end
 
@@ -57,6 +58,15 @@ defmodule Rogue.MixProject do
     [
       setup: ["deps.get", "cmd npm install --prefix assets"],
       start: ["phx.server"]
+    ]
+  end
+
+  defp releases do
+    [
+      rogue: [
+        include_executables_for: [:unix],
+        applications: [rogue: :permanent]
+      ]
     ]
   end
 end
