@@ -15,5 +15,5 @@ config :rogue, RogueWeb.Endpoint,
   http: [
     port: String.to_integer(port),
     transport_option: [socket_opts: [:inet6]]
-  ]
+  ],
   secret_key_base: secret_key_base
