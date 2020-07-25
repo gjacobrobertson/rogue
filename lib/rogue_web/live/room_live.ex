@@ -21,7 +21,7 @@ defmodule RogueWeb.RoomLive do
         </ul>
       </section>
 
-    <%= else %>
+    <% else %>
     <p>Loading</p>
     <% end %>
     """
