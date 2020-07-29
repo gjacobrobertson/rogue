@@ -20,6 +20,7 @@ defmodule RogueWeb.RoomLive do
           <% end %>
         </ul>
       </section>
+      <canvas></canvas>
 
     <% else %>
     <p>Loading</p>
