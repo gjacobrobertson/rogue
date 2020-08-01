@@ -1,11 +1,11 @@
-import { Game, AUTO, Scale } from "phaser";
-
+import { Game, Types, AUTO, Scale } from "phaser";
+import GridScene from "./scenes/GridScene"
 // const width = window.innerWidth;
 // const height = window.innerHeight;
 const width = 1280;
 const height = 720;
 
-const config = {
+const config: Types.Core.GameConfig = {
   type: AUTO,
   scale: {
     mode: Scale.FIT,
@@ -15,14 +15,10 @@ const config = {
   },
   width: width,
   height: height,
-  scene: {
-    preload() {
-      this.load.image('logo', 'images/phoenix.png')
-    },
-    create() {
-      this.add.image(width / 2, height / 2, 'logo')
-    }
+  scene: new GridScene(),
+  render: {
+    transparent: true
   }
 }
 
-const game = new Phaser.Game(config);
+const game = new Game(config);

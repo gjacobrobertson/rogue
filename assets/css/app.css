@@ -4,7 +4,6 @@
 
 body {
   margin: 0;
-  color: white;
   overflow: hidden;
 }
 
@@ -17,10 +16,6 @@ canvas {
 
 ul {
   margin: 0;
-}
-
-a {
-  color: lightblue;
 }
 
 main {
