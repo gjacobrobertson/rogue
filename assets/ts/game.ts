@@ -1,16 +1,17 @@
 import { Game, AUTO, Scale } from "phaser";
 
-const width = window.innerWidth;
-const height = window.innerHeight;
-// const width = 1920;
-// const height = 1080;
+// const width = window.innerWidth;
+// const height = window.innerHeight;
+const width = 1280;
+const height = 720;
 
 const config = {
   type: AUTO,
   scale: {
-    mode: Scale.RESIZE,
+    mode: Scale.FIT,
     width: width,
     height: height,
+    autoCenter: Scale.CENTER_BOTH
   },
   width: width,
   height: height,

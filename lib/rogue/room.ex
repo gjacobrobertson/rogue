@@ -1,14 +1,7 @@
 defmodule Rogue.Room do
-  use GenServer, restart: :transient
+  defstruct [:id, players: %{}, turn: 0, width: 10, height: 10]
 
-  alias Rogue.PubSub
-  alias Rogue.RoomSupervisor
-  alias Rogue.RoomRegistry
   alias Rogue.Player
-
-  defstruct [:id, players: %{}, turn: 0]
-
-  @dt 1500
 
   @type t() :: %__MODULE__{
           id: binary(),
@@ -16,104 +9,90 @@ defmodule Rogue.Room do
           turn: integer()
         }
 
-  @impl GenServer
-  @spec init(binary()) :: {:ok, t(), {:continue, :broadcast}}
-  def init(id) do
-    Process.send_after(self(), :tick, @dt)
-    {:ok, %__MODULE__{id: id}, {:continue, :broadcast}}
+  @max_players 4
+
+  @spec tick(t()) :: t()
+  def tick(room) do
+    room
+    |> apply_actions()
+    |> increment_turn()
   end
 
-  @impl GenServer
-  def handle_call(:join, {from, _}, state) do
-    new_state = put_in(state.players[from], Player.create())
-    {:reply, {:ok, new_state}, new_state, {:continue, :broadcast}}
-  end
+  @spec join(t(), pid()) :: {:ok, t()} | {:error, term()}
+  def join(room, pid) do
+    cond do
+      Enum.count(room.players) >= @max_players ->
+        {:error, :room_full}
 
-  def handle_call(:leave, {from, _}, state) do
-    {_player, new_state} = pop_in(state.players[from])
+      Map.has_key?(room.players, pid) ->
+        {:error, :already_joined}
 
-    continue =
-      if(Enum.empty?(new_state.players)) do
-        :exit
-      else
-        :broadcast
-      end
-
-    {:reply, {:ok, new_state}, new_state, {:continue, continue}}
-  end
-
-  @impl GenServer
-  @spec handle_continue(atom(), t()) :: {:noreply, t()}
-  def handle_continue(:broadcast, room) do
-    Phoenix.PubSub.broadcast!(PubSub, "room:#{room.id}", {:room, room})
-    {:noreply, room}
-  end
-
-  def handle_continue(:exit, _room) do
-    Process.exit(self(), :room_empty)
-  end
-
-  @impl GenServer
-  def handle_info(:tick, room) do
-    next_state = update_in(room.turn, &(&1 + 1))
-    Process.send_after(self(), :tick, @dt)
-    {:noreply, next_state, {:continue, :broadcast}}
-  end
-
-  @spec start_link(keyword()) :: GenServer.on_start()
-  def start_link(options) do
-    {id, opts} = Keyword.pop!(options, :id)
-    GenServer.start_link(__MODULE__, id, opts)
-  end
-
-  @spec join(binary() | pid()) :: {:ok, t()} | {:error, term()}
-  def join(id) when is_binary(id) do
-    {:ok, room} =
-      case lookup(id) do
-        {:error, :room_not_found} -> create(id)
-        x -> x
-      end
-
-    join(room)
-  end
-
-  def join(pid) when is_pid(pid) do
-    with {:ok, room} <- GenServer.call(pid, :join),
-         :ok <- Phoenix.PubSub.subscribe(PubSub, "room:#{room.id}") do
-      {:ok, room}
+      true ->
+        tile = find_empty_tile(room)
+        {:ok, put_in(room.players[pid], Player.create(tile))}
     end
   end
 
-  @spec leave(binary() | pid()) :: {:ok, t()}
-  def leave(id) when is_binary(id) do
-    with {:ok, room} <- lookup(id) do
-      leave(room)
+  @spec leave(t(), pid()) :: t()
+  def leave(room, pid) do
+    {_player, next} = pop_in(room.players[pid])
+    next
+  end
+
+  @spec set_action(t(), pid(), Player.action()) :: t()
+  def set_action(room, pid, action) do
+    put_in(room.players[pid].action, action)
+  end
+
+  @spec increment_turn(t()) :: t()
+  defp increment_turn(room) do
+    update_in(room.turn, &(&1 + 1))
+  end
+
+  @spec apply_actions(t()) :: t()
+  defp apply_actions(room) do
+    Enum.reduce(room.players, room, &act/2)
+  end
+
+  @spec act({pid(), Player.t()}, t()) :: t()
+  defp act({pid, %Player{action: action} = player}, room) do
+    case action do
+      {:move, dir} -> teleport(room, pid, Player.move(player, dir))
+      _ -> room
+    end
+    |> set_action(pid, nil)
+  end
+
+  @spec teleport(t(), pid(), Player.position()) :: t()
+  defp teleport(room, pid, tile) do
+    if free_tile?(room, tile) do
+      put_in(room.players[pid].position, tile)
+    else
+      room
     end
   end
 
-  def leave(pid) when is_pid(pid) do
-    with {:ok, room} <- GenServer.call(pid, :leave),
-         :ok <- Phoenix.PubSub.unsubscribe(PubSub, "room:#{room.id}") do
-      {:ok, room}
-    end
+  @spec free_tile?(t(), Player.position()) :: boolean()
+  defp free_tile?(_room, {x, y}) when x < 1 or y < 1, do: false
+
+  defp free_tile?(%__MODULE__{width: width, height: height}, {x, y}) when x > width or y > height,
+    do: false
+
+  defp free_tile?(room, {x, y} = tile) do
+    x > 0 and x <= room.width and y
+    Enum.all?(room.players, fn {_pid, player} -> player.position != tile end)
   end
 
-  @spec lookup(binary()) :: {:ok, pid()} | {:error, term()}
-  defp lookup(id) do
-    case Registry.lookup(RoomRegistry, id) do
-      [{room, _}] ->
-        {:ok, room}
-
-      [] ->
-        {:error, :room_not_found}
-    end
+  @spec random_tile(t()) :: Player.position()
+  defp random_tile(room) do
+    x = Enum.random(0..room.width)
+    y = Enum.random(0..room.height)
+    {x, y}
   end
 
-  @spec create(binary()) :: Supervisor.on_start_child()
-  defp create(id) do
-    DynamicSupervisor.start_child(RoomSupervisor, {
-      __MODULE__,
-      id: id, name: {:via, Registry, {Rogue.RoomRegistry, id}}
-    })
+  @spec find_empty_tile(t()) :: Player.position()
+  defp find_empty_tile(room) do
+    Stream.repeatedly(fn -> random_tile(room) end)
+    |> Enum.find(&free_tile?(room, &1))
   end
 end
