@@ -7,32 +7,36 @@ defmodule RogueWeb.RoomLive do
   def render(assigns) do
     ~L"""
     <%= if assigns[:room] do %>
-      <h2>Welcome, <%= @room.players[self()].name %></h2>
-      <section>
-        <h3>Turn</h3>
-        <p><%= @room.turn %></p>
-      </section>
-      <section>
-        <h3>Players</h3>
-        <ul>
-          <%= for {_, player } <- @room.players do %>
-            <li>
-              <h4><%= player.name%></h4>
-              <p>Position: <%=inspect(player.position)%> </p>
-              <p>Position: <%=inspect(player.action)%> </p>
-            </li>
-          <% end %>
-        </ul>
-      </section>
-      <section>
-        <h3>Actions<h3>
-        <ul>
-          <li><button phx-click="move" phx-value-dir="up">Up</button></li>
-          <li><button phx-click="move" phx-value-dir="down">Down</button></li>
-          <li><button phx-click="move" phx-value-dir="left">Left</button></li>
-          <li><button phx-click="move" phx-value-dir="right">Right</button></li>
-        <ul>
-      </section>
+      <canvas is="rogue-game" phx-hook="Game" data-grid-width="<%= @room.width %>" data-grid-height="<%= @room.height %>" width="1280" height="720">
+        <section>
+          <h3>Turn</h3>
+          <p><%= @room.turn %></p>
+        </section>
+        <section>
+          <h3>Players</h3>
+          <ul>
+            <%= for {_, player } <- @room.players do %>
+              <li>
+                <rogue-player data-x="<%= elem(player.position, 0)%>" data-y="<%= elem(player.position, 1)%>">
+                  <h4><%= player.name%></h4>
+                  <p>Position: <%=inspect(player.position)%> </p>
+                  <p>Position: <%=inspect(player.action)%> </p>
+                </rogue-player>
+              </li>
+            <% end %>
+          </ul>
+          <section>
+          <h3>Actions<h3>
+            <ul>
+              <li><button phx-click="move" phx-value-dir="up">Up</button></li>
+              <li><button phx-click="move" phx-value-dir="down">Down</button></li>
+              <li><button phx-click="move" phx-value-dir="left">Left</button></li>
+              <li><button phx-click="move" phx-value-dir="right">Right</button></li>
+            <ul>
+          </section>
+        </section>
+      </canvas>
+
     <% else %>
     <p>Loading</p>
     <% end %>

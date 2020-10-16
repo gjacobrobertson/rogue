@@ -26,7 +26,7 @@ module.exports = (env, options) => {
     },
     devtool: devMode ? 'eval-cheap-module-source-map' : undefined,
     resolve: {
-      extensions: [".ts"]
+      extensions: [".ts", ".js"]
     },
     module: {
       rules: [
